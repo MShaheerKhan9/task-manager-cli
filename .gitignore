@@ -8,8 +8,10 @@
 __pycache__/
 *.pyc
 
-# Logs and data
-*.txt
+# Runtime data (DO NOT COMMIT)
+tasks.txt
+log.txt
+last_log.txt
 
 # OS files
 .DS_Store

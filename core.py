@@ -2,6 +2,8 @@ from datetime import datetime
 
 
 
+
+
 class TaskManager:
     """
     Manages tasks, persistence, and daily state.
@@ -87,7 +89,7 @@ class TaskManager:
 
     def write_tasks_to_file(self):
         """Writes the tasks to the tasks file"""
-        with open("tasks.txt", "w") as file:
+        with open(self.taskfile, "w") as file:
             for t,st in zip(self.tasks,self.status):
                 file.write(f"{t},{st}\n")
 
@@ -100,7 +102,9 @@ class TaskManager:
 
     def cal_progress(self):
         """calculates the progress of the day."""
-        return f"{sum(self.status)} / {len(self.status)}"
+        completed = sum(self.status)
+        total = len(self.tasks)
+        return completed, total
 
 
     def update_tasks(self,task_num):
@@ -109,13 +113,18 @@ class TaskManager:
 
 
         if task_num > len(self.tasks) or task_num <= 0:
-            print("invalid task number")
-            return
+            raise TaskNotFoundError()
         if self.status[task_num - 1]:
-            print("Task Marked Already!")
-            return
+
+            raise TaskDoneAlreadyError()
         self.status[task_num - 1] = True
         self.update_file(task_num)
+        return {
+            "id" : task_num,
+            "name": self.tasks[task_num - 1],
+            "status": True
+        }
+
 
     def update_file(self,task_num):
         """updates the tasks list"""
@@ -129,39 +138,53 @@ class TaskManager:
             lines[task_num - 1] = f"{task.strip()},True\n"
         with open(self.taskfile, "w") as file:
             file.writelines(lines)
+
     def sort_tasks(self):
         """sorts the tasks list on adding a task."""
+        if not self.tasks:
+            return
         combined = sorted(
             zip(self.tasks, self.status),
             key=lambda pair: pair[0].lower()
         )
         self.tasks,self.status = map(list,zip(*combined))
+    def get_task(self, task_num):
+        if task_num > len(self.tasks) or task_num <= 0:
+            raise TaskNotFoundError()
+        return {
+            "id" : task_num,
+            "name": self.tasks[task_num - 1],
+            "status": self.status[task_num - 1]
+        }
 
     def add_task(self,task_name):
-        """adds a task to the tasks list nad to the file"""
+        """adds a task to the tasks list and to the file"""
         for task in self.tasks:
             if task_name == task:
-                print("Task Already Exists!")
-                return
+                raise TaskAlreadyExists()
         self.tasks.append(task_name)
         self.status.append(False)
         self.sort_tasks()
         self.write_tasks_to_file()
-        print("Task Added!")
+        index = self.tasks.index(task_name) +1
+        return{
+            "id" : index,
+            "name": task_name,
+            "status": False
+        }
 
+    def remove_task(self, task_num):
+        if task_num <= 0 or task_num > len(self.tasks):
+            raise TaskNotFoundError()
 
-    def remove_task(self,task_num):
-        """removes a task from the tasks list and updates the file"""
-        if  0 < task_num <= len(self.tasks):
-            index = task_num -1
-            self.tasks.pop(index)
-            self.status.pop(index)
-        else:
-            print("invalid task number")
-            return
+        removed = {
+            "id": task_num,
+            "name": self.tasks.pop(task_num - 1),
+            "status": self.status.pop(task_num - 1)
+        }
 
         self.write_tasks_to_file()
-        print("Task Removed!")
+        return removed
 
     def print_task_manager(self):
         """not is use for now. Prints the tasks with their status."""
@@ -183,3 +206,10 @@ class TaskManager:
         print("\nTask Progress")
 
         print("Today's progress:", self.cal_progress())
+
+class TaskNotFoundError(Exception):
+    pass
+class TaskDoneAlreadyError(Exception):
+    pass
+class TaskAlreadyExists(Exception):
+    pass
